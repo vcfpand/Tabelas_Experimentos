@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planilha de Experimento</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="tls">
+      <div class="tl tl-r"></div>
+      <div class="tl tl-y"></div>
+      <div class="tl tl-g"></div>
+    </div>
+    <div class="tb-title">Planilha de Experimento</div>
+  </div>
+  <div class="content">
+    <!-- Sidebar com navegação -->
+    <div class="sidebar" id="sidebar"></div>
+    <div class="main">
+      <!-- Painéis serão carregados dinamicamente ou já presentes no HTML -->
+      <div class="panel active" id="panel0"></div>
+      <div class="panel" id="panel1"></div>
+      <div class="panel" id="panel2"></div>
+      <div class="panel" id="panel3"></div>
+      <div class="panel" id="panel4"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
