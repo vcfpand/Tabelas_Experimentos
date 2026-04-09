@@ -1,18 +1,18 @@
 // js/printPanel.js
 import { state } from './state.js';
-import { toISOLocal, toBR, showToast } from './utils.js';
+import { toBR, showToast } from './utils.js';
 
 const T_PRINT_FG = ['#6b3fa0', '#1a6b3a', '#7a4800', '#0a3c88', '#8a001a', '#006678', '#7a6200', '#7a2020'];
 const T_PRINT_BG = ['#f0eafc', '#d4f5e3', '#fff0cc', '#dce9ff', '#ffd5dd', '#d5f5ff', '#fff8cc', '#ffe5e5'];
 
 export function initPrintPanel() {
-  const panel = document.getElementById('panel4');
+  const panel = document.getElementById('panel3');
   panel.innerHTML = `
     <div class="panel-title">Fichas Diárias</div>
     <div class="panel-sub">Uma ficha A4 paisagem por dia — aclimatação, biometrias e experimento. A primeira página é uma capa com resumo.</div>
     <div class="card">
       <div class="card-title">Resumo do período</div>
-      <div class="info-box" id="fichaInfo"></div>
+      <div class="info-box" id="fichaInfo">Carregando...</div>
       <div class="legend-row">
         <div style="display:flex;align-items:center;gap:7px"><div class="leg-swatch" style="background:#fff;border-color:#999"></div><span>Caixas lidas (amônia/nitrito)</span></div>
         <div style="display:flex;align-items:center;gap:7px"><div class="leg-swatch" style="background:#111"></div><span>Não lidas neste dia</span></div>
@@ -35,7 +35,7 @@ export function initPrintPanel() {
   document.getElementById('btnOpenPrint').addEventListener('click', openPrintWindow);
 
   window.addEventListener('panelChanged', e => {
-    if (e.detail.panel === 4) updateFichaInfo();
+    if (e.detail.panel === 3) updateFichaInfo();
   });
 }
 
@@ -48,7 +48,6 @@ function buildDaySequence() {
   bioSorted.forEach((b, i) => { bioLabelMap[b.dia] = 'Biometria ' + (i + 1); });
 
   const days = [];
-  // Aclimatação
   let d = new Date(acStart);
   let periodIdx = 0;
   while (d < expStart) {
@@ -56,10 +55,8 @@ function buildDaySequence() {
     days.push({ date: new Date(d), diaExp: -diff, period: 'acclim', periodIdx: periodIdx++ });
     d.setDate(d.getDate() + 1);
   }
-  // Dia 0 (biometria inicial)
   const d0 = new Date(expStart); d0.setDate(d0.getDate() - 1);
   days.push({ date: d0, diaExp: 0, period: 'bio', periodIdx: 0, bioLabel: bioLabelMap[0] || 'Biometria 1' });
-  // Dias experimentais
   for (let i = 1; i <= state.cfg.days; i++) {
     const date = new Date(expStart); date.setDate(date.getDate() + i - 1);
     const isBio = bioDias.has(i);
@@ -71,7 +68,6 @@ function buildDaySequence() {
       bioLabel: isBio ? bioLabelMap[i] : ''
     });
   }
-  // Biometria final
   const dfin = new Date(expStart); dfin.setDate(dfin.getDate() + state.cfg.days);
   const finalDia = state.cfg.days + 1;
   days.push({ date: dfin, diaExp: finalDia, period: 'bio', periodIdx: 0, bioLabel: bioLabelMap[finalDia] || ('Biometria ' + (bioSorted.length)) });
@@ -79,22 +75,23 @@ function buildDaySequence() {
 }
 
 function getActiveBoxes(day, totalBoxes) {
-  if (day.period === 'bio') return null; // todas
+  if (day.period === 'bio') return null;
   const group = (day.periodIdx || 0) % 4;
   const start = group * 4 + 1;
   return [start, start + 1, start + 2, start + 3].filter(c => c <= totalBoxes);
 }
 
 function updateFichaInfo() {
+  const infoEl = document.getElementById('fichaInfo');
   if (!state.confirmed) {
-    document.getElementById('fichaInfo').innerHTML = '<strong>Configure e confirme os tratamentos primeiro.</strong>';
+    infoEl.innerHTML = '<strong>Configure e confirme os tratamentos primeiro.</strong>';
     return;
   }
   const days = buildDaySequence();
   const ac = days.filter(d => d.period === 'acclim').length;
   const ex = days.filter(d => d.period === 'exp').length;
   const bi = days.filter(d => d.period === 'bio').length;
-  document.getElementById('fichaInfo').innerHTML = `
+  infoEl.innerHTML = `
     <strong>Total de fichas geradas:</strong> ${days.length} páginas A4 paisagem<br>
     <strong>Aclimatação:</strong> ${ac} dias &nbsp;|&nbsp; <strong>Biometrias:</strong> ${bi} &nbsp;|&nbsp; <strong>Experimento:</strong> ${ex} dias<br>
     <strong>Rotação amônia/nitrito:</strong> grupos de 4 caixas por dia, reiniciando em cada período.
@@ -128,14 +125,12 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
   const HCOLS = ['CAIXAS', 'TEMP (°C)', 'OD (mg/L)', 'COND (µS)', 'pH', 'MORTALIDADE', 'CONSUMO', 'AMÔNIA', 'NITRITO'];
   const CWPCT = [11, 9, 9, 9, 8, 12, 12, 15, 15];
   
-  // ========== CONSTRÓI CAPA ==========
   let capa = `
   <div style="width:277mm;height:190mm;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;page-break-after:always;padding:10mm;box-sizing:border-box;background:#fff;">
     <div style="border-bottom:3px solid #333;padding-bottom:8px;margin-bottom:12px;">
       <h1 style="font-size:24pt;font-weight:800;color:#1a1a1a;margin:0 0 4px;">${title}</h1>
       <p style="font-size:12pt;color:#555;margin:0;">Pesquisador: ${researcher || '—'}</p>
     </div>
-    
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
       <div>
         <h2 style="font-size:12pt;font-weight:700;color:#333;border-left:4px solid #0a84ff;padding-left:8px;margin:0 0 8px;">Período</h2>
@@ -156,7 +151,6 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
         </table>
       </div>
     </div>
-    
     <div style="margin-bottom:16px;">
       <h2 style="font-size:12pt;font-weight:700;color:#333;border-left:4px solid #ff9f0a;padding-left:8px;margin:0 0 10px;">Distribuição dos Tratamentos</h2>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
@@ -173,7 +167,6 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
   capa += `
       </div>
     </div>
-    
     <div style="margin-top:auto;">
       <h2 style="font-size:12pt;font-weight:700;color:#333;border-left:4px solid #bf5af2;padding-left:8px;margin:0 0 8px;">Biometrias programadas</h2>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
@@ -186,16 +179,14 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
   capa += `
       </div>
     </div>
-    
     <div style="margin-top:20px;font-size:8pt;color:#999;text-align:right;border-top:1px solid #ddd;padding-top:6px;">
+      Desenvolvido por Me. Victor César Freitas Pandolfi (UEL/NEPAG) – v1.0.0 – Licença GPLv3<br>
       Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
     </div>
   </div>
   `;
 
-  // ========== CONSTRÓI FICHAS DIÁRIAS (igual antes) ==========
   let pages = '';
-
   days.forEach((day, di) => {
     const wkdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const wk = wkdays[day.date.getDay()];
@@ -221,9 +212,7 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
     }
 
     const activeBoxes = getActiveBoxes(day, state.cfg.boxes);
-    const amNote = activeBoxes
-      ? 'Amônia/Nitrito: ' + activeBoxes.map(c => 'C' + String(c).padStart(2, '0')).join(', ')
-      : 'Amônia/Nitrito: todas as caixas';
+    const amNote = activeBoxes ? 'Amônia/Nitrito: ' + activeBoxes.map(c => 'C' + String(c).padStart(2, '0')).join(', ') : 'Amônia/Nitrito: todas as caixas';
 
     let tbRows = '';
     boxes.forEach((c, bi) => {
@@ -294,7 +283,6 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
     </div>`;
   });
 
-  // Junta capa + fichas
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Fichas Diárias — ${title}</title>
 <style>

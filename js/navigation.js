@@ -3,7 +3,6 @@ import { state } from './state.js';
 
 let currentPanel = 0;
 
-// Constrói a sidebar (chamada uma vez em main.js)
 export function buildSidebar() {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = `
@@ -12,9 +11,14 @@ export function buildSidebar() {
     <div class="nav-item locked" data-panel="1"><div class="nav-icon">2</div>Tratamentos</div>
     <div class="sb-div"></div>
     <div class="sb-section">Dados</div>
-    <div class="nav-item locked" data-panel="2"><div class="nav-icon">📋</div>Parâm. Diários</div>
-    <div class="nav-item locked" data-panel="3"><div class="nav-icon">🐟</div>Biometria</div>
-    <div class="nav-item locked" data-panel="4"><div class="nav-icon">🖨</div>Fichas Diárias</div>
+    <div class="nav-item locked" data-panel="2"><div class="nav-icon">📊</div>Tabelas Experimentais</div>
+    <div class="nav-item locked" data-panel="3"><div class="nav-icon">🖨</div>Fichas Diárias</div>
+    <div class="sb-div"></div>
+    <div class="sb-section">Ajuda</div>
+    <div class="nav-item" data-panel="4"><div class="nav-icon">ℹ️</div>Sobre</div>
+    <div style="margin-top:auto;padding:16px 10px 8px;font-size:9px;color:var(--text3);text-align:center;border-top:0.5px solid var(--border);">
+      Me. Victor C. F. Pandolfi<br>UEL/NEPAG – v1.0.0
+    </div>
   `;
 
   sidebar.querySelectorAll('.nav-item').forEach(item => {
@@ -27,7 +31,6 @@ export function buildSidebar() {
   updateSidebarState();
 }
 
-// Atualiza classes locked/done/active com base no estado
 export function updateSidebarState() {
   const items = document.querySelectorAll('.nav-item');
   items.forEach(item => {
@@ -35,16 +38,11 @@ export function updateSidebarState() {
     item.classList.remove('locked', 'done', 'active');
     if (panel === currentPanel) item.classList.add('active');
 
-    // Lógica de bloqueio/liberação
-    if (panel === 0) {
-      // Sempre liberado
-    } else if (panel === 1) {
-      if (!state.cfg.startDate) item.classList.add('locked');
-    } else if (panel >= 2 && panel <= 4) {
-      if (!state.confirmed) item.classList.add('locked');
-    }
+    if (panel === 0) {}
+    else if (panel === 1) { if (!state.cfg.startDate) item.classList.add('locked'); }
+    else if (panel === 2 || panel === 3) { if (!state.confirmed) item.classList.add('locked'); }
+    else if (panel === 4) {}
 
-    // Marca como concluído (done)
     if (panel === 1 && state.confirmed) {
       item.classList.add('done');
       item.querySelector('.nav-icon').textContent = '✓';
@@ -52,38 +50,23 @@ export function updateSidebarState() {
   });
 }
 
-// Tenta navegar para um painel
 export function tryGoTo(panel) {
-  if (panel === 0) {
-    setActivePanel(0);
-    return;
-  }
-  if (panel === 1 && state.cfg.startDate) {
-    setActivePanel(1);
-    return;
-  }
-  if (panel >= 2 && panel <= 4 && state.confirmed) {
-    setActivePanel(panel);
-    return;
-  }
-  // Não permitido
+  if (panel === 0) { setActivePanel(0); return; }
+  if (panel === 1 && state.cfg.startDate) { setActivePanel(1); return; }
+  if ((panel === 2 || panel === 3) && state.confirmed) { setActivePanel(panel); return; }
+  if (panel === 4) { setActivePanel(4); return; }
 }
 
-// Muda o painel ativo
 export function setActivePanel(index) {
-  // Esconde todos, mostra o selecionado
   for (let i = 0; i <= 4; i++) {
     const panel = document.getElementById(`panel${i}`);
     if (panel) panel.classList.toggle('active', i === index);
   }
   currentPanel = index;
   updateSidebarState();
-
-  // Dispara evento para que módulos possam reagir (ex.: atualizar conteúdo)
   window.dispatchEvent(new CustomEvent('panelChanged', { detail: { panel: index } }));
 }
 
-// Funções auxiliares para desbloquear/marcar como concluído (chamadas pelos módulos)
 export function unlockPanel(panel) {
   const item = document.querySelector(`.nav-item[data-panel="${panel}"]`);
   if (item) item.classList.remove('locked');
