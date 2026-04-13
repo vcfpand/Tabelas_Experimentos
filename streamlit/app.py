@@ -63,23 +63,23 @@ for secret in REQUIRED_SECRETS:
 # ==========================================
 # AUTENTICAÇÃO
 # ==========================================
-if "autenticado" not in st.session_state:
-    st.session_state["autenticado"] = False
-
-if not st.session_state["autenticado"]:
-    col_login, _ = st.columns([1, 2])
-    with col_login:
-        st.title("🐟 Monitoramento — Aquicultura")
-        with st.container(border=True):
-            st.markdown("**Acesso Restrito**")
-            senha = st.text_input("Senha:", type="password")
-            if st.button("Entrar", type="primary", use_container_width=True):
-                if senha == st.secrets.get("SENHA_ACESSO", ""):
-                    st.session_state["autenticado"] = True
-                    st.rerun()
-                else:
-                    st.error("❌ Senha incorreta.")
-    st.stop()
+# if "autenticado" not in st.session_state:
+#    st.session_state["autenticado"] = False
+#
+# if not st.session_state["autenticado"]:
+#    col_login, _ = st.columns([1, 2])
+#    with col_login:
+#        st.title("🐟 Monitoramento — Aquicultura")
+#        with st.container(border=True):
+#            st.markdown("**Acesso Restrito**")
+#            senha = st.text_input("Senha:", type="password")
+#            if st.button("Entrar", type="primary", use_container_width=True):
+#                if senha == st.secrets.get("SENHA_ACESSO", ""):
+#                    st.session_state["autenticado"] = True
+#                    st.rerun()
+#                else:
+#                    st.error("❌ Senha incorreta.")
+#    st.stop()
 
 # ==========================================
 # INTEGRAÇÃO GEMINI (OPCIONAL)
