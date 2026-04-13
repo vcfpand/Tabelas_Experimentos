@@ -73,7 +73,7 @@ Doutorando – Programa de Pós-Graduação em Ciência Animal
 Universidade Estadual de Londrina (UEL)  
 Membro do NEPAG – Núcleo de Estudo em Aquicultura e Genética  
 📧 victor.pandolfi@uel.br  
-🔗 [ORCID](https://orcid.org/0000-0000-0000-0000) *(adicione seu ORCID)*
+🔗 [ORCID](https://orcid.org/0000-0003-2249-1931)
 
 ---
 
