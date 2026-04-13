@@ -8,7 +8,7 @@
 
 Desenvolvida como parte do doutorado em Ciência Animal na Universidade Estadual de Londrina (UEL), no âmbito do NEPAG – Núcleo de Estudo em Aquicultura e Genética.
 
-![Interface do aplicativo](docs/screenshots/main.png)
+![Interface do aplicativo](docs/screenshots/config-dark.png)
 
 ---
 
