@@ -86,5 +86,5 @@ Este projeto está licenciado sob a **GNU General Public License v3.0** – veja
 ## 🙏 Agradecimentos
 
 - Ao NEPAG/UEL pelo suporte e infraestrutura.
-- Desenvolvido com auxílio de inteligência artificial (ChatGPT, GitHub Copilot).
+- Desenvolvido com auxílio de inteligência artificial (DeepSeek e Claude).
 - À comunidade open-source pelas bibliotecas utilizadas (SheetJS, Plotly, Streamlit, Pandas).
