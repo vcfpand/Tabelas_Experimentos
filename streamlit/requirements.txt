@@ -4,6 +4,6 @@ openpyxl
 numpy
 plotly
 requests
-google-generativeai
+google-genai
 tenacity
 scipy
