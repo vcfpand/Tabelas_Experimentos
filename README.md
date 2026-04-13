@@ -42,7 +42,7 @@ Desenvolvida como parte do doutorado em Ciência Animal na Universidade Estadual
 | Ambiente | Link |
 |----------|------|
 | **Aplicativo Web** | [https://vcfpand.github.io/Tabelas_Experimentos](https://vcfpand.github.io/Tabelas_Experimentos) |
-| **Dashboard Streamlit** | [https://pintado-dashboard.streamlit.app](https://pintado-dashboard.streamlit.app) *(exemplo)* |
+| **Dashboard Streamlit** | [https://pintado-dashboard.streamlit.app](https://tabelasvictor.streamlit.app/) |
 
 ---
 
