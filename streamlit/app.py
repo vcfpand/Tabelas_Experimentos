@@ -885,9 +885,21 @@ with tab4:
         try:
             fig_sc = px.scatter(
                 df_f, x=p_corr, y="taxa_arracoamento", color="tratamento",
-                color_discrete_map=COR_TRATAMENTO, trendline="ols",
+                color_discrete_map=COR_TRATAMENTO,
                 title=f"Impacto de {p_corr.upper()} no Apetite", template="plotly_dark",
             )
+            # Linha de tendência manual (não depende de statsmodels)
+            for trat_c, grp in df_f.dropna(subset=[p_corr, "taxa_arracoamento"]).groupby("tratamento"):
+                if trat_c not in trat_sel or len(grp) < 2:
+                    continue
+                z = np.polyfit(grp[p_corr], grp["taxa_arracoamento"], 1)
+                x_line = np.linspace(grp[p_corr].min(), grp[p_corr].max(), 50)
+                y_line = np.polyval(z, x_line)
+                fig_sc.add_scatter(
+                    x=x_line, y=y_line, mode="lines",
+                    line=dict(color=COR_TRATAMENTO.get(trat_c, "#888"), dash="dash", width=1.5),
+                    name=f"{trat_c} tendência", showlegend=False,
+                )
             st.plotly_chart(fig_sc, use_container_width=True)
         except Exception as e:
             st.error(f"❌ Erro no scatter: {e}")
