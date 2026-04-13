@@ -11,6 +11,12 @@ export function initPrintPanel() {
     <div class="panel-title">Fichas Diárias</div>
     <div class="panel-sub">Uma ficha A4 paisagem por dia — aclimatação, biometrias e experimento. A primeira página é uma capa com resumo.</div>
     <div class="card">
+      <div class="card-title">📄 Preview da Capa</div>
+      <div class="info-box" id="coverPreview" style="max-height:300px;overflow-y:auto;font-family:'SF Mono', monospace;font-size:11px;line-height:1.4;">
+        Configure e confirme os tratamentos para visualizar o preview.
+      </div>
+    </div>
+    <div class="card">
       <div class="card-title">Resumo do período</div>
       <div class="info-box" id="fichaInfo">Carregando...</div>
       <div class="legend-row">
@@ -19,23 +25,20 @@ export function initPrintPanel() {
         <div style="display:flex;align-items:center;gap:7px"><div class="leg-swatch" style="background:#fff;border-color:#999"></div><span>Todas ativas nos dias de biometria</span></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-title">Identificação</div>
-      <div class="fg2">
-        <div class="field"><label>Título / nome do experimento</label><input type="text" id="expTitle" placeholder="Ex: Experimento Tilápia 2025"></div>
-        <div class="field"><label>Pesquisador responsável</label><input type="text" id="expResearcher" placeholder="Nome do pesquisador"></div>
-      </div>
-    </div>
     <div class="btn-row">
       <button class="btn btn-print" id="btnOpenPrint">🖨️ Abrir para Impressão / Salvar PDF</button>
     </div>
   `;
 
   updateFichaInfo();
+  updateCoverPreview();
   document.getElementById('btnOpenPrint').addEventListener('click', openPrintWindow);
 
   window.addEventListener('panelChanged', e => {
-    if (e.detail.panel === 3) updateFichaInfo();
+    if (e.detail.panel === 3) {
+      updateFichaInfo();
+      updateCoverPreview();
+    }
   });
 }
 
@@ -98,13 +101,63 @@ function updateFichaInfo() {
   `;
 }
 
+function updateCoverPreview() {
+  const previewEl = document.getElementById('coverPreview');
+  if (!state.confirmed) {
+    previewEl.innerHTML = 'Configure e confirme os tratamentos para visualizar o preview.';
+    return;
+  }
+  const title = state.cfg.expTitle || 'Experimento';
+  const researcher = state.cfg.expResearcher || '—';
+  const startDateStr = toBR(new Date(state.cfg.startDate + 'T00:00:00'));
+  const endDate = new Date(state.cfg.startDate);
+  endDate.setDate(endDate.getDate() + state.cfg.days);
+  const endDateStr = toBR(endDate);
+  const acclimStr = toBR(new Date(state.cfg.acclimStart + 'T00:00:00'));
+
+  let html = `
+    <div style="border-bottom:2px solid var(--accent);margin-bottom:8px;padding-bottom:4px;">
+      <strong style="font-size:14px;">${title}</strong><br>
+      <span style="color:var(--text2);">Pesquisador: ${researcher}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div>
+        <strong>Período</strong><br>
+        Aclimatação: ${acclimStr}<br>
+        Início: ${startDateStr}<br>
+        Duração: ${state.cfg.days} dias<br>
+        Término: ${endDateStr}
+      </div>
+      <div>
+        <strong>Estrutura</strong><br>
+        Caixas: ${state.cfg.boxes}<br>
+        Tratamentos: ${state.cfg.treats}<br>
+        Peixes/caixa: ${state.cfg.fishPerBox}<br>
+        Total peixes: ${state.cfg.boxes * state.cfg.fishPerBox}
+      </div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <strong>Distribuição dos Tratamentos</strong><br>`;
+  for (let t = 0; t < state.cfg.treats; t++) {
+    const boxesT = (state.assigns[t] || []).slice().sort((a,b)=>a-b);
+    html += `<span style="background:${T_PRINT_BG[t]};color:${T_PRINT_FG[t]};padding:2px 6px;border-radius:4px;margin-right:4px;font-size:10px;">${state.cfg.treatmentNames[t]}: ${boxesT.map(c=>'C'+String(c).padStart(2,'0')).join(', ') || '—'}</span><br>`;
+  }
+  html += `</div>
+    <div>
+      <strong>Biometrias programadas</strong><br>`;
+  const sortedBio = [...state.bioDates].sort((a,b)=>a.dia-b.dia);
+  sortedBio.forEach(b => { html += `${b.label} (Dia ${b.dia}) `; });
+  html += `</div>`;
+  previewEl.innerHTML = html;
+}
+
 function openPrintWindow() {
   if (!state.confirmed) {
     showToast('⚠ Confirme os tratamentos primeiro.');
     return;
   }
-  const title = document.getElementById('expTitle').value || 'Experimento';
-  const researcher = document.getElementById('expResearcher').value || '';
+  const title = state.cfg.expTitle || 'Experimento';
+  const researcher = state.cfg.expResearcher || '';
   const days = buildDaySequence();
   const b2t = {};
   for (let t = 0; t < state.cfg.treats; t++) (state.assigns[t] || []).forEach(c => b2t[c] = t);
@@ -126,7 +179,7 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
   const CWPCT = [11, 9, 9, 9, 8, 12, 12, 15, 15];
   
   let capa = `
-  <div style="width:277mm;height:190mm;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;page-break-after:always;padding:10mm;box-sizing:border-box;background:#fff;">
+  <div style="width:277mm;height:180mm;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;page-break-after:always;padding:10mm;box-sizing:border-box;background:#fff;">
     <div style="border-bottom:3px solid #333;padding-bottom:8px;margin-bottom:12px;">
       <h1 style="font-size:24pt;font-weight:800;color:#1a1a1a;margin:0 0 4px;">${title}</h1>
       <p style="font-size:12pt;color:#555;margin:0;">Pesquisador: ${researcher || '—'}</p>
@@ -159,7 +212,7 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
     const boxesT = (state.assigns[t] || []).slice().sort((a,b)=>a-b);
     capa += `
         <div style="background:${T_PRINT_BG[t]};border-left:4px solid ${T_PRINT_FG[t]};padding:6px 12px;border-radius:4px;min-width:180px;">
-          <span style="font-weight:800;color:${T_PRINT_FG[t]};margin-right:8px;">T${t}</span>
+          <span style="font-weight:800;color:${T_PRINT_FG[t]};margin-right:8px;">${state.cfg.treatmentNames[t]}</span>
           <span style="font-family:'SF Mono',monospace;font-size:9pt;">${boxesT.map(c => 'C'+String(c).padStart(2,'0')).join(', ') || '—'}</span>
         </div>`;
   }
@@ -225,10 +278,10 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
       const tFg = T_PRINT_FG[t] || '#333';
 
       tbRows += `
-      <tr style="height:7.6mm;background:${rowBg}">
+      <tr style="height:5.8mm;background:${rowBg}">
         <td style="border:1px solid #ccc;padding:0 6px;font-size:8pt;font-weight:700;text-align:left;vertical-align:middle">
           <span style="background:${tBg};color:${tFg};padding:1px 5px;border-radius:3px;font-size:7pt;font-weight:800;margin-right:4px">
-            ${['T0','T1','T2','T3','T4','T5','T6','T7'][t]}
+            ${state.cfg.treatmentNames[t]}
           </span>
           C${String(c).padStart(2, '0')}
         </td>
@@ -244,7 +297,7 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
     });
 
     const isLast = di === days.length - 1;
-    pages += `<div style="width:277mm;height:190mm;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;${isLast ? '' : 'page-break-after:always;'}overflow:hidden;padding:0">
+    pages += `<div style="width:277mm;height:180mm;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;${isLast ? '' : 'page-break-after:always;'}overflow:hidden;padding:0">
       <div style="display:flex;align-items:stretch;border:2px solid #333;border-radius:5px 5px 0 0;background:${headerBg};border-color:${headerBorder};flex-shrink:0">
         <div style="flex:1;padding:5px 10px;border-right:1px solid ${headerBorder}">
           <div style="font-size:8pt;font-weight:800;color:${headerColor};letter-spacing:.04em;text-transform:uppercase">${title}</div>
@@ -277,7 +330,7 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
           <span style="font-size:6.5pt;color:#888;font-style:italic">${amNote}</span>
         </div>
         <div>
-          ${Array(4).fill(0).map(() => `<div style="border-bottom:0.75px solid #ccc;height:7mm"></div>`).join('')}
+          ${Array(2).fill(0).map(() => `<div style="border-bottom:0.75px solid #ccc;height:6mm"></div>`).join('')}
         </div>
       </div>
     </div>`;
@@ -287,8 +340,10 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
 <title>Fichas Diárias — ${title}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-@page{size:A4 landscape;margin:10mm}
+@page{size:A4 landscape;margin:20mm 10mm 10mm 10mm}
 body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+tr, td, th { page-break-inside: avoid; }
 @media print{body{background:#fff}}
-</style></head><body>${capa}${pages}</body></html>`;
+</style>
+</head><body>${capa}${pages}</body></html>`;
 }

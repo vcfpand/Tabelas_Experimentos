@@ -5,7 +5,7 @@ export function initAboutPanel() {
     <div class="panel-title">Sobre</div>
     <div class="panel-sub">Informações sobre o desenvolvimento, autoria e licenciamento.</div>
     <div class="card"><div class="card-title">Aplicativo</div><div class="info-box">
-      <p><strong>Planilha de Experimento</strong> – v1.0.0</p>
+      <p><strong>Planilha de Experimento</strong> – v1.2.0</p>
       <p>Ferramenta para planejamento, coleta e organização de dados em experimentos aquícolas.</p>
     </div></div>
     <div class="card"><div class="card-title">Desenvolvedor</div><div class="info-box">

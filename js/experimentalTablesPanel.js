@@ -6,7 +6,7 @@ import { exportUnifiedExcel, copyUnifiedTSV } from './exportExcel.js';
 const DAILY_COLS = [
   'data', 'dia_exp', 'tratamento', 'caixa',
   'ph', 'temp', 'od', 'cond', 'amonia', 'nitrito', 'mort',
-  'pote_inicio', 'pote_fim', 'consumo', 'racao_disp', 'pote_vazio'
+  'pote_inicio', 'pote_fim', 'consumo', 'racao_disp', 'pote_vazio', 'pote_novo'
 ];
 const DAILY_FIXED = ['data', 'dia_exp', 'tratamento', 'caixa', 'pote_vazio'];
 
@@ -113,10 +113,14 @@ function buildDailyTable() {
       const row = {
         data: dateStr, dia_exp: d, tratamento: TL[t], caixa: 'C' + String(c).padStart(2, '0'),
         pote_vazio: state.cfg.potWeights[c] || 0,
-        pote_inicio: '', pote_fim: '', racao_disp: '', consumo: ''
+        pote_inicio: '',
+        pote_fim: '',
+        racao_disp: '',
+        consumo: '',
+        pote_novo: ''
       };
       DAILY_COLS.forEach(col => {
-        if (!DAILY_FIXED.includes(col) && !['racao_disp', 'consumo'].includes(col)) row[col] = '';
+        if (!DAILY_FIXED.includes(col) && !['racao_disp', 'consumo', 'pote_novo'].includes(col)) row[col] = '';
       });
       state.dailyData.push(row);
     });
@@ -126,7 +130,14 @@ function buildDailyTable() {
     const row = state.dailyData[i];
     if (row.dia_exp === 1) continue;
     const prevRow = state.dailyData.find(r => r.dia_exp === row.dia_exp - 1 && r.caixa === row.caixa);
-    if (prevRow) row.pote_inicio = prevRow.pote_fim;
+    if (prevRow) {
+      if (prevRow.pote_novo && !isNaN(parseFloat(prevRow.pote_novo)) && parseFloat(prevRow.pote_novo) > 0) {
+        row.pote_inicio = prevRow.pote_novo;
+        row.pote_vazio = prevRow.pote_novo;
+      } else {
+        row.pote_inicio = prevRow.pote_fim;
+      }
+    }
   }
 
   state.dailyData.forEach((row, idx) => {
@@ -159,16 +170,25 @@ function buildDailyTable() {
         input.dataset.col = col;
         input.value = row[col] || '';
         input.addEventListener('input', e => {
-          state.dailyData[idx][col] = e.target.value;
+          const newValue = e.target.value;
+          state.dailyData[idx][col] = newValue;
           saveState();
-          if (col === 'pote_fim') {
+
+          if (col === 'pote_fim' || col === 'pote_novo') {
             const cur = state.dailyData[idx];
             const next = state.dailyData.find(r => r.dia_exp === cur.dia_exp + 1 && r.caixa === cur.caixa);
             if (next) {
-              next.pote_inicio = e.target.value;
+              if (col === 'pote_novo' && newValue && !isNaN(parseFloat(newValue)) && parseFloat(newValue) > 0) {
+                next.pote_inicio = newValue;
+                next.pote_vazio = newValue;
+              } else if (col === 'pote_fim' && (!cur.pote_novo || isNaN(parseFloat(cur.pote_novo)) || parseFloat(cur.pote_novo) <= 0)) {
+                next.pote_inicio = newValue;
+              }
               const nextIdx = state.dailyData.indexOf(next);
-              const nextInput = document.querySelector(`input[data-row="${nextIdx}"][data-col="pote_inicio"]`);
-              if (nextInput) nextInput.value = e.target.value;
+              const nextInputInicio = document.querySelector(`input[data-row="${nextIdx}"][data-col="pote_inicio"]`);
+              if (nextInputInicio) nextInputInicio.value = next.pote_inicio;
+              const nextInputVazio = document.querySelector(`input[data-row="${nextIdx}"][data-col="pote_vazio"]`);
+              if (nextInputVazio) nextInputVazio.value = next.pote_vazio;
               recalcRow(nextIdx);
             }
           }
@@ -187,7 +207,7 @@ function buildDailyTable() {
 }
 
 function updateCalculatedCell(row, col, td) {
-  const poteVazio = row.pote_vazio;
+  const poteVazio = parseFloat(row.pote_vazio) || 0;
   const poteInicio = parseFloat(row.pote_inicio) || 0;
   const poteFim = parseFloat(row.pote_fim) || 0;
   let value = '';

@@ -7,7 +7,11 @@ export const state = {
     boxes: 16,
     treats: 4,
     fishPerBox: 10,
-    potWeights: {}
+    potWeights: {},
+    treatmentNames: [],
+    initialFeedKg: [],
+    expTitle: '',
+    expResearcher: ''
   },
   assigns: {},
   dailyData: [],
@@ -19,8 +23,12 @@ export const state = {
 export function loadState() {
   const saved = localStorage.getItem('experimentState');
   if (saved) {
-    try { Object.assign(state, JSON.parse(saved)); }
-    catch (e) { console.warn('Falha ao carregar estado:', e); }
+    try {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+    } catch (e) {
+      console.warn('Falha ao carregar estado salvo:', e);
+    }
   }
 }
 
@@ -29,7 +37,19 @@ export function saveState() {
 }
 
 export function resetState() {
-  state.cfg = { startDate: '', acclimStart: '', days: 30, boxes: 16, treats: 4, fishPerBox: 10, potWeights: {} };
+  state.cfg = {
+    startDate: '',
+    acclimStart: '',
+    days: 30,
+    boxes: 16,
+    treats: 4,
+    fishPerBox: 10,
+    potWeights: {},
+    treatmentNames: [],
+    initialFeedKg: [],
+    expTitle: '',
+    expResearcher: ''
+  };
   state.assigns = {};
   state.dailyData = [];
   state.bioData = [];

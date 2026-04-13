@@ -28,5 +28,33 @@ export function showToast(message, duration = 2800) {
 export function mkStats(pairs) {
   return pairs.map(([l, v]) => `<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-val">${v}</div></div>`).join('');
 }
-export const TC = ['t0','t1','t2','t3','t4','t5','t6','t7'];
-export const TL = ['T0','T1','T2','T3','T4','T5','T6','T7'];
+
+export const TC = ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'];
+export const TL = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+// Tema
+export function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.body.classList.toggle('light', savedTheme === 'light');
+  updateThemeIcon(savedTheme);
+}
+export function toggleTheme() {
+  const isLight = document.body.classList.contains('light');
+  const newTheme = isLight ? 'dark' : 'light';
+  document.body.classList.toggle('light', newTheme === 'light');
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon(newTheme);
+}
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+export function createTooltip(text) {
+  const span = document.createElement('span');
+  span.style.cursor = 'help';
+  span.style.opacity = '0.7';
+  span.style.marginLeft = '4px';
+  span.textContent = 'ⓘ';
+  span.title = text;
+  return span;
+}

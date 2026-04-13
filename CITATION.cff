@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "Planilha de Experimento — Aquicultura"
+message: "Se você utilizar este software em sua pesquisa, por favor cite-o como abaixo."
+type: software
+authors:
+  - given-names: "Victor César Freitas"
+    family-names: "Pandolfi"
+    email: "victor.pandolfi@uel.br"
+    affiliation: "Universidade Estadual de Londrina (UEL)"
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # substitua pelo seu ORCID
+repository-code: "https://github.com/vcfpand/Tabelas_Experimentos"
+version: "1.2.0"
+date-released: 2026-04-13
+license: GPL-3.0
+keywords:
+  - aquaculture
+  - experiment
+  - data collection
+  - spreadsheet
+  - web application
+  - streamlit
+  - fish nutrition

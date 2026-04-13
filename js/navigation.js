@@ -17,7 +17,7 @@ export function buildSidebar() {
     <div class="sb-section">Ajuda</div>
     <div class="nav-item" data-panel="4"><div class="nav-icon">ℹ️</div>Sobre</div>
     <div style="margin-top:auto;padding:16px 10px 8px;font-size:9px;color:var(--text3);text-align:center;border-top:0.5px solid var(--border);">
-      Me. Victor C. F. Pandolfi<br>UEL/NEPAG – v1.0.0
+      Me. Victor C. F. Pandolfi<br>UEL/NEPAG – v1.2.0
     </div>
   `;
 

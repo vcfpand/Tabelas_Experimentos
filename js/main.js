@@ -6,6 +6,7 @@ import { initTreatmentPanel } from './treatmentPanel.js';
 import { initExperimentalTablesPanel } from './experimentalTablesPanel.js';
 import { initPrintPanel } from './printPanel.js';
 import { initAboutPanel } from './aboutPanel.js';
+import { initTheme, toggleTheme } from './utils.js';
 
 loadState();
 buildSidebar();
@@ -15,7 +16,9 @@ initTreatmentPanel();
 initExperimentalTablesPanel();
 initPrintPanel();
 initAboutPanel();
+initTheme();
 
+document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
 window.addEventListener('beforeunload', () => saveState());
 
 import { setActivePanel } from './navigation.js';
