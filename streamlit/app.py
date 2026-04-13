@@ -659,7 +659,7 @@ for i, trat in enumerate(trat_sel):
                 f"{m_nitrito:.3f}" if pd.notna(m_nitrito) else "—",
                 help="Último valor registrado (não média)",
             )
-            c_a.metric(
+            st.metric(
                 _nh3_label + " Tóxica",
                 f"{_nh3_card:.4f} mg/L" if pd.notna(_nh3_card) else "—",
                 help=f"NH₃ não ionizada (Emerson 1975). Alerta: {NH3_LIMITE_ALERTA} | Crítico: {NH3_LIMITE_CRITICO} mg/L",
