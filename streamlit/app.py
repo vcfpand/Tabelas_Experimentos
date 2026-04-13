@@ -9,11 +9,8 @@ import logging
 from datetime import datetime
 
 # ==========================================
-# CONFIGURAÇÃO DE LOGGING
+# CONFIGURAÇÃO DA PÁGINA E TEMA
 # ==========================================
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 st.set_page_config(
     page_title="Dashboard de Experimento",
     layout="wide",
@@ -21,15 +18,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ==========================================
-# CSS PARA TEMA E ESTILO (FROSTED GLASS)
-# ==========================================
 st.markdown("""
 <style>
-    .stApp {
-        background-color: #0d0d0f;
-        color: #f2f2f7;
-    }
+    .stApp { background-color: #0d0d0f; color: #f2f2f7; }
     div[data-testid="stVerticalBlock"] > div[style*="flex"] {
         background: rgba(28, 28, 30, 0.6);
         backdrop-filter: blur(20px) saturate(180%);
@@ -64,39 +55,19 @@ if theme == "Claro":
     st.markdown('<script>document.body.classList.add("light-mode");</script>', unsafe_allow_html=True)
 
 # ==========================================
-# VALIDAÇÃO DE SECRETS
+# LOGGING E SECRETS
 # ==========================================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 REQUIRED_SECRETS = ["SENHA_ACESSO", "URL_ONEDRIVE"]
 for secret in REQUIRED_SECRETS:
     if secret not in st.secrets:
-        st.error(f"❌ Secret ausente: `{secret}`. Configure em Secrets do Streamlit.")
+        st.error(f"❌ Secret ausente: `{secret}`.")
         st.stop()
-logger.info("✅ Secrets obrigatórios validados")
 
 # ==========================================
-# INTEGRAÇÃO GEMINI (OPCIONAL)
-# ==========================================
-usa_gemini = False
-client = None
-GEMINI_MODEL = "gemini-2.0-flash-exp"
-
-try:
-    from google import genai
-    from tenacity import retry, stop_after_attempt, wait_exponential
-    if "GEMINI_API_KEY" in st.secrets:
-        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-        usa_gemini = True
-        logger.info("✅ Gemini inicializado")
-        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
-        def call_gemini_api(model, prompt):
-            return client.models.generate_content(model=model, contents=prompt)
-except ImportError:
-    st.sidebar.warning("⚠️ Gemini não disponível (bibliotecas ausentes).")
-except Exception as e:
-    st.sidebar.warning(f"⚠️ Erro Gemini: {e}")
-
-# ==========================================
-# 1. LOGIN
+# AUTENTICAÇÃO
 # ==========================================
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
@@ -117,11 +88,30 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # ==========================================
-# 2. CARREGAMENTO DE DADOS (COMPLETO)
+# INTEGRAÇÃO GEMINI (OPCIONAL)
+# ==========================================
+usa_gemini = False
+client = None
+GEMINI_MODEL = "gemini-2.0-flash-exp"
+
+try:
+    from google import genai
+    from tenacity import retry, stop_after_attempt, wait_exponential
+    if "GEMINI_API_KEY" in st.secrets:
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+        usa_gemini = True
+        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+        def call_gemini_api(model, prompt):
+            return client.models.generate_content(model=model, contents=prompt)
+except ImportError:
+    pass
+
+# ==========================================
+# CARREGAMENTO DE DADOS
 # ==========================================
 CACHE_TTL = 120
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner="Carregando dados do OneDrive...")
+@st.cache_data(ttl=CACHE_TTL, show_spinner="Carregando dados...")
 def load_data():
     try:
         url = st.secrets["URL_ONEDRIVE"].strip()
@@ -129,7 +119,7 @@ def load_data():
         resp.raise_for_status()
         xls = BytesIO(resp.content)
 
-        # Abas necessárias
+        # Abas (nomes exatos)
         df_daily = pd.read_excel(xls, sheet_name="Parametros_diarios")
         xls.seek(0)
         df_bio = pd.read_excel(xls, sheet_name="Biometria")
@@ -140,11 +130,11 @@ def load_data():
         xls.seek(0)
         df_trat = pd.read_excel(xls, sheet_name="Tratamentos")
 
-        # Padroniza colunas (minúsculas)
+        # Padroniza colunas (minúsculas, sem espaços extras)
         for d in [df_daily, df_bio, df_resumo, df_config, df_trat]:
             d.columns = [c.strip().lower() for c in d.columns]
 
-        # Converte numéricos
+        # Converte numéricos (colunas específicas do novo formato)
         numeric_cols = ["ph", "temp", "od", "cond", "amonia", "nitrito", "mort", "consumo", "dia_exp"]
         for col in numeric_cols:
             if col in df_daily.columns:
@@ -167,11 +157,12 @@ def load_data():
             elif param == "Pesquisador":
                 pesquisador = str(row.iloc[1])
             elif "Ração inicial" in param:
+                # Extrai o nome do tratamento (ex: "Ração inicial T1 (kg)")
                 partes = param.split()
-                trat = partes[-2]
+                trat = partes[-2]  # "T1"
                 racao_inicial[trat] = float(row.iloc[1])
 
-        # Cores para tratamentos (paleta automática)
+        # Cores
         cores = px.colors.qualitative.Plotly[:len(tratamentos)]
         COR_TRATAMENTO = {trat: cores[i] for i, trat in enumerate(tratamentos)}
 
@@ -197,16 +188,14 @@ NH3_CRITICO  = 0.10
 NH3_LIMITE_ALERTA  = NH3_SEGURO
 NH3_LIMITE_CRITICO = NH3_CRITICO
 
-NITRITO_IDEAL    = 0.0
 NITRITO_ACEIT    = 0.25
 NITRITO_CRITICO  = 0.50
 NITRITO_PERIGOSO = 1.00
 
 ALERTAS_AGUA = {
-    "nitrito": {"max": 0.1,  "label": "Nitrito (mg/L)"},
-    "od":      {"min": 5.0,  "label": "OD (mg/L)"},
-    "ph":      {"min": 6.5,  "max": 8.5, "label": "pH"},
-    "temp":    {"min": 24.0, "max": 30.0, "label": "Temperatura (°C)"},
+    "od": {"min": 5.0, "label": "OD (mg/L)"},
+    "ph": {"min": 6.5, "max": 8.5, "label": "pH"},
+    "temp": {"min": 24.0, "max": 30.0, "label": "Temperatura (°C)"},
 }
 
 def calcular_nh3_toxica(amonia_total, ph, temp_c):
@@ -220,8 +209,8 @@ def calcular_alertas(df_trat: pd.DataFrame) -> list[dict]:
     alertas = []
     df_sorted = df_trat.sort_values("dia_exp")
 
-    PARAMS_MEDIA = {k: v for k, v in ALERTAS_AGUA.items() if k != "nitrito"}
-    for param, limites in PARAMS_MEDIA.items():
+    # Parâmetros de média
+    for param, limites in ALERTAS_AGUA.items():
         if param not in df_trat.columns:
             continue
         valor = df_trat[param].mean()
@@ -232,6 +221,7 @@ def calcular_alertas(df_trat: pd.DataFrame) -> list[dict]:
         if "min" in limites and valor < limites["min"]:
             alertas.append({"param": limites["label"], "valor": valor, "tipo": "⚠️ BAIXO", "limite": limites["min"], "nh3": False, "rotulo": "média"})
 
+    # Nitrito
     ult_nitrito = df_sorted.dropna(subset=["nitrito"])
     if not ult_nitrito.empty:
         nitrito_val = ult_nitrito["nitrito"].iloc[-1]
@@ -244,8 +234,9 @@ def calcular_alertas(df_trat: pd.DataFrame) -> list[dict]:
             tipo, faixa, nivel = "🟡 ACEITÁVEL", f"{NITRITO_ACEIT}–{NITRITO_CRITICO} mg/L", "aceitavel"
         else:
             tipo, faixa, nivel = "🟢 IDEAL", f"< {NITRITO_ACEIT} mg/L", "ideal"
-        alertas.append({"param": f"Nitrito NO₂⁻ (Dia {dia_nit})", "valor": nitrito_val, "tipo": tipo, "faixa": faixa, "nivel": nivel, "nh3": False, "nitrito": True, "rotulo": "último registro"})
+        alertas.append({"param": f"Nitrito NO₂⁻ (Dia {dia_nit})", "valor": nitrito_val, "tipo": tipo, "faixa": faixa, "nivel": nivel, "nh3": False, "nitrito": True})
 
+    # Amônia e NH₃
     ult_amonia = df_sorted.dropna(subset=["amonia"])
     ult_ph = df_sorted.dropna(subset=["ph"])
     ult_temp = df_sorted.dropna(subset=["temp"])
@@ -270,12 +261,12 @@ def calcular_alertas(df_trat: pd.DataFrame) -> list[dict]:
 # ==========================================
 # SIDEBAR
 # ==========================================
-st.sidebar.header("⚙️ Configurações Globais")
-col_sb1, col_sb2 = st.sidebar.columns(2)
-if col_sb1.button("🔄 Recarregar", use_container_width=True):
+st.sidebar.header("⚙️ Configurações")
+col1, col2 = st.sidebar.columns(2)
+if col1.button("🔄 Recarregar", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
-if col_sb2.button("🚪 Sair", use_container_width=True):
+if col2.button("🚪 Sair", use_container_width=True):
     st.session_state["autenticado"] = False
     st.rerun()
 
@@ -286,7 +277,7 @@ st.sidebar.header("🎯 Projeção de Abate")
 peso_alvo = st.sidebar.slider("Peso Final Esperado (g)", 40.0, 150.0, 90.0)
 peso_ini = df["peso_medio_inicial"].mean()
 tce = (np.log(peso_alvo) - np.log(peso_ini)) / DIAS_TOTAIS if peso_ini > 0 else 0
-st.sidebar.info(f"TCE Necessária: **{tce * 100:.2f}% /dia**")
+st.sidebar.info(f"TCE Necessária: **{tce*100:.2f}% /dia**")
 st.sidebar.divider()
 
 trat_sel = st.sidebar.multiselect("Tratamentos", TRATAMENTOS, default=TRATAMENTOS)
@@ -299,19 +290,18 @@ if remover_outliers:
 # ==========================================
 # PRÉ-PROCESSAMENTO
 # ==========================================
-df_unico_dia = df.drop_duplicates(subset=["caixa", "dia_exp"]).copy()
-df_unico_dia["consumo_preenchido"] = df_unico_dia["consumo"].fillna(0)
-df_unico_dia["consumo_acum"] = df_unico_dia.groupby("caixa")["consumo_preenchido"].cumsum()
-df_unico_dia["mort_preenchida"] = df_unico_dia["mort"].fillna(0)
-df_unico_dia["mort_acum"] = df_unico_dia.groupby("caixa")["mort_preenchida"].cumsum()
+df_unico = df.drop_duplicates(subset=["caixa", "dia_exp"]).copy()
+df_unico["consumo_preenchido"] = df_unico["consumo"].fillna(0)
+df_unico["consumo_acum"] = df_unico.groupby("caixa")["consumo_preenchido"].cumsum()
+df_unico["mort_preenchida"] = df_unico["mort"].fillna(0)
+df_unico["mort_acum"] = df_unico.groupby("caixa")["mort_preenchida"].cumsum()
 
-df = pd.merge(df, df_unico_dia[["caixa", "dia_exp", "consumo_acum", "mort_acum"]], on=["caixa", "dia_exp"], how="left")
+df = pd.merge(df, df_unico[["caixa", "dia_exp", "consumo_acum", "mort_acum"]], on=["caixa", "dia_exp"], how="left")
 
 df["peso_est"] = df["peso_medio_inicial"] * np.exp(tce * df["dia_exp"])
 df["n_peixes_atual"] = df["n_peixes_inicial"] - df["mort_acum"]
 df["biomassa_est_g"] = df["peso_est"] * df["n_peixes_atual"]
 df["ganho_biomassa_g"] = df["biomassa_est_g"] - (df["peso_medio_inicial"] * df["n_peixes_inicial"])
-df["gpd"] = df["peso_est"].diff().clip(lower=0)
 
 df["caa_est"] = np.where(
     (df["ganho_biomassa_g"] > 0.01) & (df["ganho_biomassa_g"].notna()),
@@ -364,15 +354,12 @@ if trat_sel:
             todos_alertas[trat] = alertas
 
     if todos_alertas:
-        with st.expander("⚠️ Alertas de Qualidade da Água — Clique para expandir", expanded=True):
+        with st.expander("⚠️ Alertas de Qualidade da Água", expanded=True):
             for trat, alertas in todos_alertas.items():
                 st.markdown(f"**{trat}**")
                 for a in alertas:
                     if a.get("nh3"):
-                        linha1 = f"{a['tipo']} — **{a['param']}**: `{a['valor']:.4f} mg/L` — Faixa: {a['faixa']}"
-                        linha2 = f"Calculada com: NH₄⁺ Total = `{a['amonia_total']:.3f} mg/L` | pH = `{a['ph_ref']:.2f}` | Temp = `{a['temp_ref']:.1f} °C`"
-                        linha3 = "Ref: Emerson et al. (1975) | Escala: 🟢 <0.02 Seguro | 🟡 0.02–0.05 Atenção | 🟠 0.05–0.10 Crítico | 🔴 ≥0.10 Perigoso"
-                        msg = linha1 + "  \n" + linha2 + "  \n" + linha3
+                        msg = f"{a['tipo']} — **{a['param']}**: `{a['valor']:.4f} mg/L` — Faixa: {a['faixa']}\n\nCalculada com: NH₄⁺ Total = `{a['amonia_total']:.3f} mg/L` | pH = `{a['ph_ref']:.2f}` | Temp = `{a['temp_ref']:.1f} °C`\n\nRef: Emerson et al. (1975) | 🟢 <0.02 | 🟡 0.02–0.05 | 🟠 0.05–0.10 | 🔴 ≥0.10"
                         nivel = a.get("nivel", "seguro")
                         if nivel == "perigoso": st.error(msg)
                         elif nivel == "critico": st.warning(msg)
@@ -476,8 +463,8 @@ for i, trat in enumerate(trat_sel):
 # ==========================================
 if usa_gemini and client:
     with st.container(border=True):
-        st.markdown("#### 🧠 Análise Geral do Experimento (Google Gemini)")
-        if st.button("Gerar Relatório Zootécnico Diário", type="primary"):
+        st.markdown("#### 🧠 Análise Geral (Google Gemini)")
+        if st.button("Gerar Relatório Zootécnico", type="primary"):
             with st.spinner("Analisando..."):
                 prompt = f"""Atue como Especialista em Aquicultura. Analise os dados abaixo de um experimento com diferentes tratamentos:
 {dados_gemini}
@@ -506,7 +493,7 @@ with tab1:
         fig_bio = px.line(df_f, x="dia_exp", y="biomassa_est_g", color="tratamento", color_discrete_map=COR_TRATAMENTO, title="Biomassa Estimada (g)", template="plotly_dark", markers=True)
         c3.plotly_chart(fig_bio, use_container_width=True)
     except Exception as e:
-        st.error(f"❌ Erro nos gráficos: {e}")
+        st.error(f"❌ Erro: {e}")
 
     st.subheader("Consumo e Taxa de Arraçoamento")
     c4, c5 = st.columns(2)
@@ -521,27 +508,25 @@ with tab1:
 
 with tab2:
     st.subheader("Evolução dos Parâmetros Físico-Químicos")
-    tipo_grafico = st.radio("Visualização:", ["Linha (Média Tratamento)", "Linha (Por Caixa)", "Boxplot (Distribuição)"], horizontal=True)
+    tipo_grafico = st.radio("Visualização:", ["Linha (Média)", "Boxplot"], horizontal=True)
     param_list = ["temp", "od", "amonia", "nitrito", "ph", "cond"]
     try:
         for i in range(0, len(param_list), 3):
-            cols_agua = st.columns(3)
+            cols_a = st.columns(3)
             for j in range(3):
                 if i + j >= len(param_list): break
                 p = param_list[i + j]
-                if tipo_grafico == "Linha (Média Tratamento)":
+                if tipo_grafico == "Linha (Média)":
                     df_agg = df_f.groupby(["dia_exp", "tratamento"])[p].mean().reset_index()
                     fig = px.line(df_agg, x="dia_exp", y=p, color="tratamento", color_discrete_map=COR_TRATAMENTO, title=p.upper(), template="plotly_dark", markers=True)
-                elif tipo_grafico == "Linha (Por Caixa)":
-                    fig = px.line(df_f, x="dia_exp", y=p, color="caixa", facet_col="tratamento", facet_col_wrap=2, title=p.upper(), template="plotly_dark")
                 else:
                     fig = px.box(df_f, x="tratamento", y=p, color="tratamento", color_discrete_map=COR_TRATAMENTO, title=p.upper(), template="plotly_dark", points="all")
-                cols_agua[j].plotly_chart(fig, use_container_width=True)
+                cols_a[j].plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"❌ Erro: {e}")
 
 with tab3:
-    st.subheader("📉 Análise de Mortalidade e Sobrevivência")
+    st.subheader("📉 Mortalidade e Sobrevivência")
     c_m1, c_m2 = st.columns(2)
     try:
         df_mort_agg = df_f.drop_duplicates(["caixa", "dia_exp"]).groupby(["dia_exp", "tratamento"])["mort_acum"].mean().reset_index()
@@ -555,7 +540,7 @@ with tab3:
         st.error(f"❌ Erro: {e}")
 
 with tab4:
-    st.subheader("🔬 Correlação Ambiental e Comportamental")
+    st.subheader("🔬 Correlação")
     c_e1, c_e2 = st.columns(2)
     with c_e1:
         p_corr = st.selectbox("Eixo X:", ["amonia", "od", "temp", "ph", "nitrito", "cond"])
@@ -579,28 +564,13 @@ with tab4:
             st.error(f"❌ Erro: {e}")
 
 with tab5:
-    st.subheader("📥 Dados Filtrados e Exportação")
-    col_exp1, col_exp2 = st.columns([2, 1])
-    with col_exp1:
-        colunas_exibir = ["tratamento", "caixa", "dia_exp", "consumo", "consumo_acum", "ph", "temp", "od", "amonia", "nitrito", "mort", "mort_acum", "peso_est", "biomassa_est_g", "taxa_arracoamento", "sobrevivencia_pct"]
-        colunas_disp = [c for c in colunas_exibir if c in df_f.columns]
-        df_exibir = df_f[colunas_disp].sort_values(["tratamento", "caixa", "dia_exp"])
-        busca = st.text_input("🔍 Filtrar por caixa ou tratamento:", "")
-        if busca:
-            mask = df_exibir.apply(lambda row: row.astype(str).str.contains(busca, case=False).any(), axis=1)
-            df_exibir = df_exibir[mask]
-        st.dataframe(df_exibir.reset_index(drop=True), use_container_width=True, height=350)
-    with col_exp2:
-        st.markdown("**Exportar Dados**")
-        csv_data = df_exibir.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Baixar CSV", csv_data, f"dados_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", "text/csv", use_container_width=True)
-        try:
-            buffer = BytesIO()
-            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                df_exibir.to_excel(writer, sheet_name="Dados_Filtrados", index=False)
-            st.download_button("⬇️ Baixar Excel", buffer.getvalue(), f"dados_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-        except Exception as e:
-            st.warning(f"⚠️ Excel indisponível: {e}")
+    st.subheader("📥 Dados Filtrados")
+    colunas_exibir = ["tratamento", "caixa", "dia_exp", "consumo", "consumo_acum", "ph", "temp", "od", "amonia", "nitrito", "mort", "mort_acum", "peso_est", "biomassa_est_g", "taxa_arracoamento", "sobrevivencia_pct"]
+    colunas_disp = [c for c in colunas_exibir if c in df_f.columns]
+    df_exibir = df_f[colunas_disp].sort_values(["tratamento", "caixa", "dia_exp"])
+    st.dataframe(df_exibir, use_container_width=True, height=400)
+    csv = df_exibir.to_csv(index=False).encode('utf-8')
+    st.download_button("⬇️ Baixar CSV", csv, "dados_filtrados.csv", "text/csv")
 
 # ==========================================
 # SOBRE E RODAPÉ
@@ -621,4 +591,4 @@ with st.sidebar.expander("ℹ️ Sobre"):
     """)
 
 st.divider()
-st.caption(f"🐟 Dashboard v2.0 · Última atualização: Dia {dia_max_preenchido}/{DIAS_TOTAIS} · {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+st.caption(f"🐟 Dashboard v2.0 · Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
