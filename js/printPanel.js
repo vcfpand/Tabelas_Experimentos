@@ -48,7 +48,13 @@ function buildDaySequence() {
   const bioDias = new Set(state.bioDates.map(b => b.dia));
   const bioSorted = [...state.bioDates].sort((a, b) => a.dia - b.dia);
   const bioLabelMap = {};
-  bioSorted.forEach((b, i) => { bioLabelMap[b.dia] = 'Biometria ' + (i + 1); });
+  bioSorted.forEach((b, i) => {
+    let label;
+    if (i === 0) label = 'Biometria Inicial';
+    else if (i === bioSorted.length - 1) label = 'Biometria Final';
+    else label = 'Biometria Intermediária';
+    bioLabelMap[b.dia] = label;
+  });
 
   const days = [];
   let d = new Date(acStart);
@@ -73,7 +79,20 @@ function buildDaySequence() {
   }
   const dfin = new Date(expStart); dfin.setDate(dfin.getDate() + state.cfg.days);
   const finalDia = state.cfg.days + 1;
-  days.push({ date: dfin, diaExp: finalDia, period: 'bio', periodIdx: 0, bioLabel: bioLabelMap[finalDia] || ('Biometria ' + (bioSorted.length)) });
+  days.push({ date: dfin, diaExp: finalDia, period: 'bio', periodIdx: 0, bioLabel: bioLabelMap[finalDia] || 'Biometria Final' });
+
+  // 14 folhas adicionais para caso o experimento se prolongue além do previsto
+  for (let extra = 1; extra <= 14; extra++) {
+    const dExtra = new Date(dfin);
+    dExtra.setDate(dExtra.getDate() + extra);
+    days.push({
+      date: dExtra,
+      diaExp: finalDia + extra,
+      period: 'adicional',
+      periodIdx: extra - 1
+    });
+  }
+
   return days;
 }
 
@@ -94,9 +113,10 @@ function updateFichaInfo() {
   const ac = days.filter(d => d.period === 'acclim').length;
   const ex = days.filter(d => d.period === 'exp').length;
   const bi = days.filter(d => d.period === 'bio').length;
+  const ad = days.filter(d => d.period === 'adicional').length;
   infoEl.innerHTML = `
     <strong>Total de fichas geradas:</strong> ${days.length} páginas A4 paisagem<br>
-    <strong>Aclimatação:</strong> ${ac} dias &nbsp;|&nbsp; <strong>Biometrias:</strong> ${bi} &nbsp;|&nbsp; <strong>Experimento:</strong> ${ex} dias<br>
+    <strong>Aclimatação:</strong> ${ac} dias &nbsp;|&nbsp; <strong>Biometrias:</strong> ${bi} &nbsp;|&nbsp; <strong>Experimento:</strong> ${ex} dias &nbsp;|&nbsp; <strong>Adicionais:</strong> ${ad}<br>
     <strong>Rotação amônia/nitrito:</strong> grupos de 4 caixas por dia, reiniciando em cada período.
   `;
 }
@@ -257,6 +277,11 @@ function buildPrintHTML(days, boxes, b2t, title, researcher) {
       headerBg = '#fff8dc';
       headerColor = '#7a5a00';
       headerBorder = '#f0d060';
+    } else if (day.period === 'adicional') {
+      periodLabel = 'ADICIONAL';
+      headerBg = '#f5f5f5';
+      headerColor = '#555555';
+      headerBorder = '#bbbbbb';
     } else {
       periodLabel = 'EXPERIMENTO';
       headerBg = '#e2f5ea';
