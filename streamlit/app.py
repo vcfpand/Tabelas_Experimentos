@@ -66,15 +66,15 @@ for secret in REQUIRED_SECRETS:
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
- if not st.session_state["autenticado"]:
+if not st.session_state["autenticado"]:
     col_login, _ = st.columns([1, 2])
     with col_login:
-        st.title("🐟 Monitoramento — Aquicultura")
+        st.title("🐟 Monitoramento - Pintado")
         with st.container(border=True):
             st.markdown("**Acesso Restrito**")
-            senha = st.text_input("Senha:", type="password")
+            senha_digitada = st.text_input("Senha:", type="password", placeholder="Digite sua senha")
             if st.button("Entrar", type="primary", use_container_width=True):
-                if senha == st.secrets.get("SENHA_ACESSO", ""):
+                if senha_digitada == st.secrets.get("SENHA_ACESSO", ""):
                     st.session_state["autenticado"] = True
                     st.rerun()
                 else:
